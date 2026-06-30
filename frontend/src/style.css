@@ -1,0 +1,9 @@
+@import "tailwindcss";
+
+@theme {
+  --color-caatinga-verde: #4a5d3a;
+  --color-caatinga-oliva: #6b7048;
+  --color-caatinga-caqui: #beb592;
+  --color-caatinga-terra: #8b6f4e;
+  --color-caatinga-escuro: #2e2b1f;
+}
