@@ -1,4 +1,5 @@
 import hashlib
+import qrcode
 from io import BytesIO
 from textwrap import wrap
 from reportlab.lib.pagesizes import A4
@@ -63,3 +64,13 @@ def gerar_pdf_termo(reserva):
 def gerar_hash_assinatura(reserva, ip):
     conteudo = f'{reserva.id}-{reserva.usuario.cpf}-{reserva.criado_em.isoformat()}-{ip}'
     return hashlib.sha256(conteudo.encode('utf-8')).hexdigest()
+
+def gerar_qr_code(dados):
+    qr = qrcode.QRCode(box_size=8, border=2)
+    qr.add_data(dados)
+    qr.make(fit=True)
+    img = qr.make_image(fill_color='black', back_color='white')
+    buffer = BytesIO()
+    img.save(buffer, format='PNG')
+    buffer.seek(0)
+    return buffer

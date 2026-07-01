@@ -86,6 +86,7 @@ class TermoAssinatura(models.Model):
     reserva = models.OneToOneField(Reserva, on_delete=models.PROTECT)
     hash_assinatura = models.CharField(max_length=64)
     caminho_pdf = models.FileField(upload_to='termos/')
+    codigo_qr = models.ImageField(upload_to='qrcodes/', blank=True, null=True)
     ip_assinatura = models.GenericIPAddressField(null=True, blank=True)
     assinado_em = models.DateTimeField(auto_now_add=True)
 

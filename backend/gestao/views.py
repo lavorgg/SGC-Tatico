@@ -3,10 +3,12 @@ from django.db import transaction
 from django.db.models import Sum
 from rest_framework import viewsets, status
 from rest_framework.decorators import action
+from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
+from rest_framework.views import APIView
 from .models import Arena, Equipamento, Reserva, ReservaEquipamento, TermoAssinatura
 from .serializers import ReservaSerializer
-from .services import gerar_pdf_termo, gerar_hash_assinatura
+from .services import gerar_pdf_termo, gerar_hash_assinatura, gerar_qr_code
 
 
 class ReservaViewSet(viewsets.ModelViewSet):
@@ -23,7 +25,6 @@ class ReservaViewSet(viewsets.ModelViewSet):
         itens_equipamento = serializer.validated_data.pop('itens_equipamento', [])
 
         with transaction.atomic():
-            # 1. Trava e valida a Arena
             Arena.objects.select_for_update().get(pk=arena.pk)
 
             conflito_arena = Reserva.objects.filter(
@@ -39,10 +40,6 @@ class ReservaViewSet(viewsets.ModelViewSet):
                     status=status.HTTP_409_CONFLICT,
                 )
 
-            # 2. Trava os equipamentos pedidos, em ordem fixa por PK.
-            #    Ordem fixa evita deadlock: se duas reservas pedem os mesmos
-            #    dois equipamentos em ordens diferentes, sem isso o Postgres
-            #    pode travar as duas esperando uma a outra pra sempre.
             equipamento_ids = sorted(item['equipamento'].pk for item in itens_equipamento)
             equipamentos_travados = {
                 eq.pk: eq for eq in
@@ -68,7 +65,6 @@ class ReservaViewSet(viewsets.ModelViewSet):
                         status=status.HTTP_409_CONFLICT,
                     )
 
-            # 3. Cria a reserva e os itens, só depois de tudo validado
             reserva = Reserva.objects.create(
                 usuario=serializer.validated_data['usuario'],
                 arena=arena,
@@ -121,12 +117,50 @@ class ReservaViewSet(viewsets.ModelViewSet):
             save=True,
         )
 
+        url_validacao = request.build_absolute_uri(
+            f'/api/termos/validar/{hash_assinatura}/'
+        )
+        buffer_qr = gerar_qr_code(url_validacao)
+        termo.codigo_qr.save(
+            f'qr_reserva_{reserva.id}.png',
+            ContentFile(buffer_qr.read()),
+            save=True,
+        )
+
         return Response(
             {
                 'detail': 'Termo assinado com sucesso.',
                 'termo_id': termo.id,
                 'pdf_url': termo.caminho_pdf.url,
+                'qr_code_url': termo.codigo_qr.url,
                 'hash_assinatura': termo.hash_assinatura,
             },
             status=status.HTTP_201_CREATED,
         )
+
+
+class ValidarTermoView(APIView):
+    permission_classes = [AllowAny]
+
+    def get(self, request, hash_assinatura):
+        try:
+            termo = TermoAssinatura.objects.select_related('usuario', 'reserva__arena').get(
+                hash_assinatura=hash_assinatura
+            )
+        except TermoAssinatura.DoesNotExist:
+            return Response(
+                {'valido': False, 'detail': 'Termo não encontrado.'},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        if termo.reserva.status == Reserva.Status.CANCELADA:
+            return Response({'valido': False, 'detail': 'Reserva cancelada.'})
+
+        return Response({
+            'valido': True,
+            'organizador': termo.usuario.get_full_name() or termo.usuario.username,
+            'arena': termo.reserva.arena.nome,
+            'data_hora_inicio': termo.reserva.data_hora_inicio,
+            'data_hora_fim': termo.reserva.data_hora_fim,
+            'assinado_em': termo.assinado_em,
+        })
