@@ -1,9 +1,12 @@
+from django.core.files.base import ContentFile
 from django.db import transaction
 from django.db.models import Sum
 from rest_framework import viewsets, status
+from rest_framework.decorators import action
 from rest_framework.response import Response
-from .models import Arena, Equipamento, Reserva, ReservaEquipamento
+from .models import Arena, Equipamento, Reserva, ReservaEquipamento, TermoAssinatura
 from .serializers import ReservaSerializer
+from .services import gerar_pdf_termo, gerar_hash_assinatura
 
 
 class ReservaViewSet(viewsets.ModelViewSet):
@@ -20,7 +23,7 @@ class ReservaViewSet(viewsets.ModelViewSet):
         itens_equipamento = serializer.validated_data.pop('itens_equipamento', [])
 
         with transaction.atomic():
-            # 1. Trava e valida a Arena (lógica já existente)
+            # 1. Trava e valida a Arena
             Arena.objects.select_for_update().get(pk=arena.pk)
 
             conflito_arena = Reserva.objects.filter(
@@ -85,3 +88,45 @@ class ReservaViewSet(viewsets.ModelViewSet):
         output_serializer = self.get_serializer(reserva)
         headers = self.get_success_headers(output_serializer.data)
         return Response(output_serializer.data, status=status.HTTP_201_CREATED, headers=headers)
+
+    @action(detail=True, methods=['post'])
+    def assinar_termo(self, request, pk=None):
+        reserva = self.get_object()
+
+        if reserva.status == Reserva.Status.CANCELADA:
+            return Response(
+                {'detail': 'Não é possível assinar termo de uma reserva cancelada.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        if hasattr(reserva, 'termoassinatura'):
+            return Response(
+                {'detail': 'Essa reserva já possui um termo assinado.'},
+                status=status.HTTP_409_CONFLICT,
+            )
+
+        ip = request.META.get('REMOTE_ADDR')
+        buffer_pdf = gerar_pdf_termo(reserva)
+        hash_assinatura = gerar_hash_assinatura(reserva, ip)
+
+        termo = TermoAssinatura(
+            usuario=reserva.usuario,
+            reserva=reserva,
+            hash_assinatura=hash_assinatura,
+            ip_assinatura=ip,
+        )
+        termo.caminho_pdf.save(
+            f'termo_reserva_{reserva.id}.pdf',
+            ContentFile(buffer_pdf.read()),
+            save=True,
+        )
+
+        return Response(
+            {
+                'detail': 'Termo assinado com sucesso.',
+                'termo_id': termo.id,
+                'pdf_url': termo.caminho_pdf.url,
+                'hash_assinatura': termo.hash_assinatura,
+            },
+            status=status.HTTP_201_CREATED,
+        )
