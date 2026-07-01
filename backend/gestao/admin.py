@@ -1,6 +1,6 @@
 from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin
-from .models import Usuario, Arena, Equipamento, Reserva, ReservaEquipamento, TermoAssinatura
+from .models import Usuario, Arena, Equipamento, Reserva, ReservaEquipamento, Participante, TermoAssinatura
 
 
 class UsuarioAdmin(UserAdmin):
@@ -13,4 +13,5 @@ admin.site.register(Arena)
 admin.site.register(Equipamento)
 admin.site.register(Reserva)
 admin.site.register(ReservaEquipamento)
+admin.site.register(Participante)
 admin.site.register(TermoAssinatura)
