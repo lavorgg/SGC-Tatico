@@ -6,18 +6,41 @@ import { useAuthMock } from '../stores/authMock'
 const { estado } = useAuthMock()
 
 const arenas = ref([])
+const equipamentos = ref([])
 const arenaSelecionada = ref('')
 const dataHoraInicio = ref('')
 const dataHoraFim = ref('')
+const quantidadesEquipamento = ref({})
 const carregando = ref(false)
 const mensagemErro = ref('')
 const mensagemSucesso = ref('')
 const ultimaReservaId = ref(null)
 
 onMounted(async () => {
-  const resposta = await api.get('/arenas/')
-  arenas.value = resposta.data
+  try {
+    const [respArenas, respEquipamentos] = await Promise.all([
+      api.get('/arenas/'),
+      api.get('/equipamentos/'),
+    ])
+    arenas.value = respArenas.data
+    equipamentos.value = respEquipamentos.data
+    for (const eq of equipamentos.value) {
+      quantidadesEquipamento.value[eq.id] = 0
+    }
+  } catch (erro) {
+    mensagemErro.value = 'Não foi possível carregar arenas/equipamentos. O backend está rodando?'
+    console.error(erro)
+  }
 })
+
+function montarItensEquipamento() {
+  return Object.entries(quantidadesEquipamento.value)
+    .filter(([, quantidade]) => quantidade > 0)
+    .map(([equipamentoId, quantidade]) => ({
+      equipamento: Number(equipamentoId),
+      quantidade_alugada: quantidade,
+    }))
+}
 
 async function criarReserva() {
   mensagemErro.value = ''
@@ -29,7 +52,6 @@ async function criarReserva() {
   }
 
   carregando.value = true
-  // resto da função continua igual
 
   try {
     const resposta = await api.post('/reservas/', {
@@ -37,16 +59,13 @@ async function criarReserva() {
       arena: arenaSelecionada.value,
       data_hora_inicio: dataHoraInicio.value,
       data_hora_fim: dataHoraFim.value,
+      itens_equipamento: montarItensEquipamento(),
     })
     mensagemSucesso.value = `Reserva #${resposta.data.id} criada com sucesso.`
     ultimaReservaId.value = resposta.data.id
   } catch (erro) {
-    if (erro.response && erro.response.data && erro.response.data.detail) {
-      mensagemErro.value = erro.response.data.detail
-    } else {
-      mensagemErro.value = 'Erro inesperado ao criar reserva. Confere o console.'
-      console.error(erro)
-    }
+    mensagemErro.value = erro.response?.data?.detail || 'Erro inesperado ao criar reserva. Confere o console.'
+    if (!erro.response) console.error(erro)
   } finally {
     carregando.value = false
   }
@@ -80,6 +99,20 @@ async function assinarTermo() {
 
     <label class="block text-sm mb-1">Fim</label>
     <input v-model="dataHoraFim" type="datetime-local" class="w-full mb-4 px-3 py-2 rounded bg-caatinga-verde/20 border border-caatinga-oliva" />
+
+    <div v-if="equipamentos.length" class="mb-4">
+      <p class="text-sm mb-2">Equipamentos (opcional)</p>
+      <div v-for="eq in equipamentos" :key="eq.id" class="flex items-center justify-between mb-2 bg-caatinga-verde/10 px-3 py-2 rounded">
+        <span class="text-sm">{{ eq.nome }} <span class="text-caatinga-caqui/60">(estoque: {{ eq.quantidade_estoque }})</span></span>
+        <input
+          v-model.number="quantidadesEquipamento[eq.id]"
+          type="number"
+          min="0"
+          :max="eq.quantidade_estoque"
+          class="w-16 px-2 py-1 rounded bg-caatinga-escuro border border-caatinga-oliva text-center"
+        />
+      </div>
+    </div>
 
     <button
       @click="criarReserva"
