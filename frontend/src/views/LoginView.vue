@@ -6,12 +6,13 @@ import { useAuthMock } from '../stores/authMock'
 const router = useRouter()
 const { login } = useAuthMock()
 
+const usuarioId = ref('')
 const nome = ref('')
 const tipoPerfil = ref('JOGADOR')
 
 function entrar() {
-  if (!nome.value.trim()) return
-  login(nome.value.trim(), tipoPerfil.value)
+  if (!usuarioId.value || !nome.value.trim()) return
+  login(usuarioId.value, nome.value.trim(), tipoPerfil.value)
   router.push(tipoPerfil.value === 'OPERADOR' ? '/portaria' : '/jogador')
 }
 </script>
@@ -22,7 +23,15 @@ function entrar() {
       <h1 class="text-2xl font-bold text-caatinga-caqui mb-1">SGC-Tático</h1>
       <p class="text-sm text-caatinga-caqui/70 mb-6">Login temporário — sem senha, JWT pendente</p>
 
-      <label class="block text-sm text-caatinga-caqui mb-1">Nome</label>
+      <label class="block text-sm text-caatinga-caqui mb-1">ID do usuário (backend)</label>
+      <input
+        v-model="usuarioId"
+        type="number"
+        placeholder="Ex: 1"
+        class="w-full mb-4 px-3 py-2 rounded bg-caatinga-escuro border border-caatinga-oliva text-caatinga-caqui focus:outline-none focus:border-caatinga-terra"
+      />
+
+      <label class="block text-sm text-caatinga-caqui mb-1">Nome (exibição)</label>
       <input
         v-model="nome"
         type="text"

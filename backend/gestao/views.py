@@ -7,9 +7,17 @@ from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from .models import Arena, Equipamento, Reserva, ReservaEquipamento, TermoAssinatura
-from .serializers import ReservaSerializer
+from .serializers import ReservaSerializer, ArenaSerializer, EquipamentoSerializer
 from .services import gerar_pdf_termo, gerar_hash_assinatura, gerar_qr_code
 
+class ArenaViewSet(viewsets.ReadOnlyModelViewSet):
+    queryset = Arena.objects.all()
+    serializer_class = ArenaSerializer
+
+
+class EquipamentoViewSet(viewsets.ReadOnlyModelViewSet):
+    queryset = Equipamento.objects.all()
+    serializer_class = EquipamentoSerializer
 
 class ReservaViewSet(viewsets.ModelViewSet):
     queryset = Reserva.objects.all()
@@ -23,6 +31,11 @@ class ReservaViewSet(viewsets.ModelViewSet):
         inicio = serializer.validated_data['data_hora_inicio']
         fim = serializer.validated_data['data_hora_fim']
         itens_equipamento = serializer.validated_data.pop('itens_equipamento', [])
+        if fim <= inicio:
+            return Response(
+                {'detail': 'O horário de fim deve ser depois do horário de início.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
 
         with transaction.atomic():
             Arena.objects.select_for_update().get(pk=arena.pk)

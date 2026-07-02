@@ -1,5 +1,17 @@
 from rest_framework import serializers
 from .models import Reserva, ReservaEquipamento
+from .models import Arena, Equipamento, Reserva, ReservaEquipamento
+
+class ArenaSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Arena
+        fields = ['id', 'nome', 'capacidade_maxima', 'valor_locacao']
+
+
+class EquipamentoSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Equipamento
+        fields = ['id', 'nome', 'categoria', 'quantidade_estoque', 'valor_locacao']
 
 
 class ReservaEquipamentoSerializer(serializers.ModelSerializer):

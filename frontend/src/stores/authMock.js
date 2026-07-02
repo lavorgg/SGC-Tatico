@@ -11,8 +11,8 @@ function carregarDoStorage() {
   }
 }
 
-function login(nome, tipoPerfil) {
-  const usuario = { nome, tipoPerfil }
+function login(usuarioId, nome, tipoPerfil) {
+  const usuario = { usuarioId: Number(usuarioId), nome, tipoPerfil }
   estado.usuarioLogado = usuario
   localStorage.setItem('sgc_usuario_mock', JSON.stringify(usuario))
 }
