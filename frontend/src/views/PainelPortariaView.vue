@@ -2,10 +2,7 @@
 import axios from 'axios'
 import { ref, onMounted, onBeforeUnmount } from 'vue'
 import QrScanner from 'qr-scanner'
-import QrScannerWorkerPath from 'qr-scanner/qr-scanner-worker.min.js?url'
 import api from '../services/api'
-
-QrScanner.WORKER_PATH = QrScannerWorkerPath
 
 const videoElement = ref(null)
 let scanner = null
@@ -67,7 +64,8 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <div class="min-h-screen bg-caatinga-escuro text-caatinga-caqui p-4 max-w-lg mx-auto">
+  <div class="min-h-screen w-full bg-caatinga-escuro text-caatinga-caqui">
+    <div class="max-w-lg mx-auto p-4">
     <h1 class="text-xl font-bold mb-1">Painel da Portaria</h1>
     <p class="text-sm text-caatinga-caqui/70 mb-6">Aponte a câmera para o QR Code do jogador</p>
 
@@ -97,6 +95,7 @@ onBeforeUnmount(() => {
       >
         Escanear próximo
       </button>
+    </div>
     </div>
   </div>
 </template>

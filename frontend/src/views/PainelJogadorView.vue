@@ -82,7 +82,8 @@ async function assinarTermo() {
 </script>
 
 <template>
-  <div class="min-h-screen bg-caatinga-escuro text-caatinga-caqui p-4 max-w-lg mx-auto">
+  <div class="min-h-screen w-full bg-caatinga-escuro text-caatinga-caqui">
+    <div class="max-w-lg mx-auto p-4">
     <h1 class="text-xl font-bold mb-1">Painel do Jogador</h1>
     <p class="text-sm text-caatinga-caqui/70 mb-6">Logado como {{ estado.usuarioLogado?.nome }} (ID {{ estado.usuarioLogado?.usuarioId }})</p>
 
@@ -111,6 +112,7 @@ async function assinarTermo() {
           :max="eq.quantidade_estoque"
           class="w-16 px-2 py-1 rounded bg-caatinga-escuro border border-caatinga-oliva text-center"
         />
+      </div>
       </div>
     </div>
 
